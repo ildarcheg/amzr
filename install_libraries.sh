@@ -12,6 +12,7 @@ sudo pip install beautifulsoup4
 sudo pip install python-dateutil
 sudo pip install pytz
 sudo pip install lxml
+sudo pip install requests
 
 sudo pip install xvfbwrapper
 sudo apt-get install xvfb x11-xkb-utils -y

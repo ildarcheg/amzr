@@ -7,6 +7,33 @@ from xvfbwrapper import Xvfb
 import sys
 from lxml import etree
 from io import StringIO, BytesIO
+import os.path
+
+class User(object):
+	def __init__(self, userID = '', itemsID = []):
+		self.id = userID
+		self.itemsID = itemsID
+	def getString(self):
+		return ''+str(self.id)+'\t'+','.join(str(x) for x in self.itemsID) 
+
+class UsersCollection(object):
+	def __init__(self):
+		self.users = []
+		self.usersID = []
+	def add(self, user):
+		if user.id not in self.usersID and user not in self.users:
+			self.users.append(user)
+			self.usersID.append(user.id)
+	def saveToDisk(self, file):
+		with open(file, 'w') as f:
+			xxx = [x.getString() for x in self.users]
+			f.write('\n'.join(xxx))
+	def loadFromDisk(self, file):
+		if os.path.isfile(file): 
+			with open(file, 'r') as f:
+				for line in f:
+					userID, itemsID = line.split('\t')
+					self.add(User(userID, itemsID))
 
 ids='B07G8DLK1L,B00CKJG7NS,B07JQGNC39,B07J6Q2BPF,B01MZYT1SY,\
 		B07GRRZ24K,B07GJ42DB2,B07HH5YV6K,B0713RDBL2,B07GQTRRFL,\
@@ -28,6 +55,8 @@ ids='B07G8DLK1L,B00CKJG7NS,B07JQGNC39,B07J6Q2BPF,B01MZYT1SY,\
 		B079GCQN65,B07HKW2BS8'
 ids = ids.replace('\t','').split(",")
 
+user1 = User('amzn1.account.AGKWBHVKAXOGUB4X5BT2ZV2SJPZQ', ids)
+
 def get_driver():
 	# chrome_options = webdriver.ChromeOptions()
 	# prefs = {"profile.managed_default_content_settings.images": 2}
@@ -35,8 +64,6 @@ def get_driver():
 	# driver = webdriver.Chrome(chrome_options=chrome_options)
 	driver = webdriver.Chrome()
 	return driver
-
-#link = 'https://www.amazon.com/gp/product/B01MD2D7ZG'
 
 driver = get_driver()
 parser = etree.HTMLParser()
@@ -63,18 +90,29 @@ def getAllUsersOnReviewPage(review_link):
 		usersOnPage.append(i.attrib['href'].split('/')[3])
 	return usersOnPage
 
-# base_link = 'https://www.amazon.com'
-# rev_links = [base_link + i for i in sublinks]
+def getItemsByUserID(userID, driverS, counter):
+	nextPageToken = ''
+	itemsID = []
+	while nextPageToken != None:
+		counter = counter + 1
+		if counter > 10:
+			counter = 0
+			driverS.close()
+			print('           -------   new driver run   -------   ')
+			driverS = get_driver()
+		nextPageToken = nextPageToken.encode('ascii', 'ignore')
+		url = 'https://www.amazon.com/profilewidget/timeline/visitor?nextPageToken={}&filteredContributionTypes=productreview&directedId={}'.format(urllib.quote(nextPageToken), userID)
+		driverS.get(url)
+		print('url: ', url)
+		tree = etree.parse(StringIO(driverS.page_source), parser)
+		response_dict = json.loads(tree.xpath("//text()")[0])
+		contributions = response_dict['contributions']
+		nextPageToken = response_dict['nextPageToken']
+		itemsIDOnPage = [i[u'product'][u'asin'].encode('ascii', 'ignore') for i in contributions]
+		itemsID.extend(itemsIDOnPage)
+	return itemsID, driverS, counter
 
-# rev_link = 'https://www.amazon.com/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
-# driver.get(rev_link)
-# html = driver.page_source
-# tree   = etree.parse(StringIO(html), parser)
-# print(rev_link)
-# els = tree.xpath("//a[@class='a-profile']")
-# [base_link + i.attrib['href'] for i in els]
-
-def getUsersForItemID(itemID):
+def getUsersIDForItemID(itemID):
 	print('itemID: ', itemID)
 	review_link_general = getAllReviewsLinkByItemID(itemID)
 	base_link = 'https://www.amazon.com'
@@ -98,12 +136,72 @@ def getUsersForItemID(itemID):
 		usersForItemID.extend(usersForItemIDOnPage)
 	return usersForItemID
 
-print(rev_link)
+col = UsersCollection()
+col.loadFromDisk('ids.csv')
+col.add(user1)
 
-x = getUsersForItemID('B01MD2D7ZG')
+for itemID in user1.itemsID:
+	usersID = getUsersIDForItemID(itemID)
+	users = []
+	driverS = get_driver()
+	counter = 0
+	for userID in usersForItemID:
+		print('----------------------')
+		print('----------------------')
+		print('----------------------')
+		print('itemID:', itemID, 'userID', userID)
+		print('----')
+		itemsID, driverS, counter = getItemsByUserID(userID, driverS, counter)
+		col.add(User(userID, itemsID))
+		col.saveToDisk('ids.csv')
+
+
+
 # ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1
 # '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
 # '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_3?ie=UTF8&reviewerType=all_reviews&pageNumber=3'
 # '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1'
 # ['/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_2?ie=UTF8&reviewerType=all_reviews&pageNumber=2', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_3?ie=UTF8&reviewerType=all_reviews&pageNumber=3', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_4?ie=UTF8&reviewerType=all_reviews&pageNumber=4', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_5?ie=UTF8&reviewerType=all_reviews&pageNumber=5', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_6?ie=UTF8&reviewerType=all_reviews&pageNumber=6', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_7?ie=UTF8&reviewerType=all_reviews&pageNumber=7']
 # rev_link = 'https://www.amazon.com/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
+
+r = requests.get(url = URL, params = PARAMS) 
+r
+# extracting data in json format 
+data = r.json() 
+
+URL = 'https://www.amazon.com/profilewidget/timeline/visitor?nextPageToken=&filteredContributionTypes=productreview%2Cglimpse%2Cideas&directedId=amzn1.account.AEBELQXS2ALPK5SW7QXNM56VRDOQ'
+
+
+getItemsByUserID('amzn1.account.AEBELQXS2ALPK5SW7QXNM56VRDOQ')
+
+
+nextPageToken = response['nextPageToken'].encode('ascii', 'ignore')
+PARAMS = {'nextPageToken':nextPageToken, 'filteredContributionTypes':'productreview', 'directedId':userID}
+r = requests.get(url = URL, headers = headers, params = PARAMS) 
+response = json.loads(r.text)
+print(response['nextPageToken'].encode('ascii', 'ignore'))
+print('contributions: ', len(response['contributions']))
+	# HTTP REQUETS
+	# URL = 'https://www.amazon.com/profilewidget/timeline/visitor'
+	# headers = {'authority': 'www.amazon.com',
+	# 			'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+	# 			'accept-encoding':'gzip, deflate, br',
+	# 			'user-agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+	# 			}
+	# nextPageToken = ''
+	# itemsID = []
+	# while nextPageToken != None:
+	# 	nextPageToken = nextPageToken.encode('ascii', 'ignore')
+	# 	PARAMS = {'nextPageToken':nextPageToken, 'filteredContributionTypes':'productreview', 'directedId':userID}
+	# 	response = requests.get(url = URL, headers = headers, params = PARAMS) 
+	# 	print('url: ', response.request.url)
+	# 	print('status: ', response.status_code)
+	# 	if response.status_code !=200:
+	# 		nextPageToken=None
+	# 		continue	
+	# 	response_dict = json.loads(response.text)
+	# 	contributions = response_dict['contributions']
+	# 	nextPageToken = response_dict['nextPageToken']
+	# 	itemsIDOnPage = [i[u'product'][u'asin'].encode('ascii', 'ignore') for i in contributions]
+	# 	itemsID.extend(itemsIDOnPage)
+	# return itemsID
