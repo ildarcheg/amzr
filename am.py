@@ -137,6 +137,8 @@ def getItemsByUserID(userID, driverS, counter):
 def getUsersIDForItemID(itemID):
 	print('itemID: ', itemID)
 	review_link_general = getAllReviewsLinkByItemID(itemID)
+	if review_link_general is None:
+		return []
 	base_link = 'https://www.amazon.com'
 	print('itemID all reviews page: ', base_link+review_link_general)
 	driver.get(base_link+review_link_general)
@@ -161,7 +163,7 @@ def getUsersIDForItemID(itemID):
 col = UsersCollection()
 col.loadFromDisk()
 #col.add(user1)
-
+# 'B07J6Q2BPF' usersID = getUsersIDForItemID('B07J6Q2BPF')
 for itemID in user1.itemsID:
 	if col.existsItemID(itemID):
 		print('         ------- ITEM {} exists -------'.format(itemID))
@@ -187,51 +189,51 @@ for itemID in user1.itemsID:
 
 
 
-# ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1
-# '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
-# '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_3?ie=UTF8&reviewerType=all_reviews&pageNumber=3'
-# '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1'
-# ['/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_2?ie=UTF8&reviewerType=all_reviews&pageNumber=2', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_3?ie=UTF8&reviewerType=all_reviews&pageNumber=3', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_4?ie=UTF8&reviewerType=all_reviews&pageNumber=4', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_5?ie=UTF8&reviewerType=all_reviews&pageNumber=5', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_6?ie=UTF8&reviewerType=all_reviews&pageNumber=6', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_7?ie=UTF8&reviewerType=all_reviews&pageNumber=7']
-# rev_link = 'https://www.amazon.com/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
+# # ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1
+# # '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
+# # '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_3?ie=UTF8&reviewerType=all_reviews&pageNumber=3'
+# # '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1'
+# # ['/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_1?ie=UTF8&reviewerType=all_reviews&pageNumber=1', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_2?ie=UTF8&reviewerType=all_reviews&pageNumber=2', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_3?ie=UTF8&reviewerType=all_reviews&pageNumber=3', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_4?ie=UTF8&reviewerType=all_reviews&pageNumber=4', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_5?ie=UTF8&reviewerType=all_reviews&pageNumber=5', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_6?ie=UTF8&reviewerType=all_reviews&pageNumber=6', '/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_arp_d_paging_btm_7?ie=UTF8&reviewerType=all_reviews&pageNumber=7']
+# # rev_link = 'https://www.amazon.com/Whiskey-Glass-Fashioned-Cocktail-Glassware/product-reviews/B01MD2D7ZG/ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
 
-r = requests.get(url = URL, params = PARAMS) 
-r
-# extracting data in json format 
-data = r.json() 
+# r = requests.get(url = URL, params = PARAMS) 
+# r
+# # extracting data in json format 
+# data = r.json() 
 
-URL = 'https://www.amazon.com/profilewidget/timeline/visitor?nextPageToken=&filteredContributionTypes=productreview%2Cglimpse%2Cideas&directedId=amzn1.account.AEBELQXS2ALPK5SW7QXNM56VRDOQ'
-
-
-getItemsByUserID('amzn1.account.AEBELQXS2ALPK5SW7QXNM56VRDOQ')
+# URL = 'https://www.amazon.com/profilewidget/timeline/visitor?nextPageToken=&filteredContributionTypes=productreview%2Cglimpse%2Cideas&directedId=amzn1.account.AEBELQXS2ALPK5SW7QXNM56VRDOQ'
 
 
-nextPageToken = response['nextPageToken'].encode('ascii', 'ignore')
-PARAMS = {'nextPageToken':nextPageToken, 'filteredContributionTypes':'productreview', 'directedId':userID}
-r = requests.get(url = URL, headers = headers, params = PARAMS) 
-response = json.loads(r.text)
-print(response['nextPageToken'].encode('ascii', 'ignore'))
-print('contributions: ', len(response['contributions']))
-	# HTTP REQUETS
-	# URL = 'https://www.amazon.com/profilewidget/timeline/visitor'
-	# headers = {'authority': 'www.amazon.com',
-	# 			'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
-	# 			'accept-encoding':'gzip, deflate, br',
-	# 			'user-agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
-	# 			}
-	# nextPageToken = ''
-	# itemsID = []
-	# while nextPageToken != None:
-	# 	nextPageToken = nextPageToken.encode('ascii', 'ignore')
-	# 	PARAMS = {'nextPageToken':nextPageToken, 'filteredContributionTypes':'productreview', 'directedId':userID}
-	# 	response = requests.get(url = URL, headers = headers, params = PARAMS) 
-	# 	print('url: ', response.request.url)
-	# 	print('status: ', response.status_code)
-	# 	if response.status_code !=200:
-	# 		nextPageToken=None
-	# 		continue	
-	# 	response_dict = json.loads(response.text)
-	# 	contributions = response_dict['contributions']
-	# 	nextPageToken = response_dict['nextPageToken']
-	# 	itemsIDOnPage = [i[u'product'][u'asin'].encode('ascii', 'ignore') for i in contributions]
-	# 	itemsID.extend(itemsIDOnPage)
-	# return itemsID
+# getItemsByUserID('amzn1.account.AEBELQXS2ALPK5SW7QXNM56VRDOQ')
+
+
+# nextPageToken = response['nextPageToken'].encode('ascii', 'ignore')
+# PARAMS = {'nextPageToken':nextPageToken, 'filteredContributionTypes':'productreview', 'directedId':userID}
+# r = requests.get(url = URL, headers = headers, params = PARAMS) 
+# response = json.loads(r.text)
+# print(response['nextPageToken'].encode('ascii', 'ignore'))
+# print('contributions: ', len(response['contributions']))
+# 	# HTTP REQUETS
+# 	# URL = 'https://www.amazon.com/profilewidget/timeline/visitor'
+# 	# headers = {'authority': 'www.amazon.com',
+# 	# 			'accept':'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
+# 	# 			'accept-encoding':'gzip, deflate, br',
+# 	# 			'user-agent':'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/70.0.3538.77 Safari/537.36'
+# 	# 			}
+# 	# nextPageToken = ''
+# 	# itemsID = []
+# 	# while nextPageToken != None:
+# 	# 	nextPageToken = nextPageToken.encode('ascii', 'ignore')
+# 	# 	PARAMS = {'nextPageToken':nextPageToken, 'filteredContributionTypes':'productreview', 'directedId':userID}
+# 	# 	response = requests.get(url = URL, headers = headers, params = PARAMS) 
+# 	# 	print('url: ', response.request.url)
+# 	# 	print('status: ', response.status_code)
+# 	# 	if response.status_code !=200:
+# 	# 		nextPageToken=None
+# 	# 		continue	
+# 	# 	response_dict = json.loads(response.text)
+# 	# 	contributions = response_dict['contributions']
+# 	# 	nextPageToken = response_dict['nextPageToken']
+# 	# 	itemsIDOnPage = [i[u'product'][u'asin'].encode('ascii', 'ignore') for i in contributions]
+# 	# 	itemsID.extend(itemsIDOnPage)
+# 	# return itemsID
