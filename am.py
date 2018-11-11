@@ -1,15 +1,12 @@
-
-import selenium
-from selenium import webdriver
-from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.support.ui import WebDriverWait
-from xvfbwrapper import Xvfb
 import sys
 from lxml import etree
 from io import StringIO, BytesIO
 import os.path
 import urllib
 import json
+
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 
 class User(object):
 	def __init__(self, userID = '', itemsID = []):
@@ -57,6 +54,95 @@ class UsersCollection(object):
 					itemsID.append(line.strip())
 				self.itemsID = itemsID
 
+class Downloader(object):
+	def __init__(self):
+		self.driver = self.getWebdriver()
+		self.counter = 0	
+	def __del__(self):
+		self.driver.close()
+	def getSourcePage(self, url):
+		self.counter += 1
+		if self.counter > 10:
+			self.driver.close()
+			self.driver = self.getWebdriver()
+			self.counter = 0
+		self.driver.get(url)
+		self.driver.get_screenshot_as_file("last_page.png")
+		return self.driver.page_source
+	def getWebdriver(self):
+		WINDOW_SIZE = "1920,1080"
+		prefs = {"profile.managed_default_content_settings.images": 2}
+		chrome_options = Options()  
+		chrome_options.add_experimental_option("prefs", prefs)
+		#chrome_options.add_argument("--headless")  
+		#chrome_options.add_argument("--window-size=%s" % WINDOW_SIZE)
+		return webdriver.Chrome(chrome_options=chrome_options) 	
+
+def getAllReviewsLinkByItemID(itemID):
+	base_link = 'https://www.amazon.com/gp/product/'
+	temp_link = base_link + itemID
+	page_source = downloader.getSourcePage(temp_link)
+	tree = etree.parse(StringIO(page_source), parser)
+	els = tree.xpath("//a[@data-hook='see-all-reviews-link-foot']")
+	if len(els) == 0:
+		return None
+	else:
+		return els[0].attrib['href']
+
+def getAllUsersOnReviewPage(review_link):
+	base_link = 'https://www.amazon.com'
+	temp_link = base_link + review_link
+	page_source = downloader.getSourcePage(temp_link)
+	tree = etree.parse(StringIO(page_source), parser)
+	els = tree.xpath("//a[@class='a-profile']")
+	usersOnPage = []
+	for i in els:
+		usersOnPage.append(i.attrib['href'].split('/')[3])
+	return usersOnPage
+
+def getItemsByUserID(userID):
+	nextPageToken = ''
+	itemsID = []
+	while nextPageToken != None:
+		nextPageToken = nextPageToken.encode('ascii', 'ignore')
+		url = 'https://www.amazon.com/profilewidget/timeline/visitor?nextPageToken={}&filteredContributionTypes=productreview&directedId={}'.format(urllib.quote(nextPageToken), userID)
+		page_source = downloader.getSourcePage(url)
+		print('url: ', url)
+		tree = etree.parse(StringIO(page_source), parser)
+		#print('JSON: ', tree.xpath("//text()")[0])
+		response_dict = json.loads(tree.xpath("//text()")[0])
+		contributions = response_dict['contributions']
+		nextPageToken = response_dict['nextPageToken']
+		itemsIDOnPage = [i[u'product'][u'asin'].encode('ascii', 'ignore') for i in contributions]
+		itemsID.extend(itemsIDOnPage)
+	return itemsID
+
+def getUsersIDForItemID(itemID):
+	print('itemID: ', itemID)
+	review_link_general = getAllReviewsLinkByItemID(itemID)
+	if review_link_general is None:
+		return []
+	base_link = 'https://www.amazon.com'
+	print('itemID all reviews page: ', base_link+review_link_general)
+	page_source = downloader.getSourcePage(base_link+review_link_general)
+	tree = etree.parse(StringIO(page_source), parser)
+	els = tree.xpath("//li[@data-reftag='cm_cr_arp_d_paging_btm']/a/text()")
+	if len(els)> 1:
+		total_pages = int(els[len(els)-1])
+	else:
+		total_pages = 1
+	review_links = []
+	to_be_replaced = 'ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
+	for i in range(0, total_pages):
+		replace_end = 'ref=cm_cr_arp_d_paging_btm_{}?ie=UTF8&reviewerType=all_reviews&pageNumber={}'.format(i+1,i+1)
+		new_review_link = review_link_general.replace(to_be_replaced, replace_end)
+		review_links.append(new_review_link)
+	usersForItemID = []
+	for review_link in review_links:
+		usersForItemIDOnPage = getAllUsersOnReviewPage(review_link)
+		usersForItemID.extend(usersForItemIDOnPage)
+	return usersForItemID
+
 ids='B07G8DLK1L,B00CKJG7NS,B07JQGNC39,B07J6Q2BPF,B01MZYT1SY,\
 		B07GRRZ24K,B07GJ42DB2,B07HH5YV6K,B0713RDBL2,B07GQTRRFL,\
 		B0777KZBVJ,B07G7F3CTB,B07H7NQR85,B07H7NQR85,B07HZ1DLHM,\
@@ -79,87 +165,8 @@ ids = ids.replace('\t','').split(",")
 
 user1 = User('amzn1.account.AGKWBHVKAXOGUB4X5BT2ZV2SJPZQ', ids)
 
-def get_driver():
-	# chrome_options = webdriver.ChromeOptions()
-	# prefs = {"profile.managed_default_content_settings.images": 2}
-	# chrome_options.add_experimental_option("prefs", prefs)
-	# driver = webdriver.Chrome(chrome_options=chrome_options)
-	driver = webdriver.Chrome()
-	return driver
-
-driver = get_driver()
 parser = etree.HTMLParser()
-
-def getAllReviewsLinkByItemID(itemID):
-	base_link = 'https://www.amazon.com/gp/product/'
-	temp_link = base_link + itemID
-	driver.get(temp_link)
-	tree = etree.parse(StringIO(driver.page_source), parser)
-	els = tree.xpath("//a[@data-hook='see-all-reviews-link-foot']")
-	if len(els) == 0:
-		return None
-	else:
-		return els[0].attrib['href']
-
-def getAllUsersOnReviewPage(review_link):
-	base_link = 'https://www.amazon.com'
-	temp_link = base_link + review_link
-	driver.get(temp_link)
-	tree = etree.parse(StringIO(driver.page_source), parser)
-	els = tree.xpath("//a[@class='a-profile']")
-	usersOnPage = []
-	for i in els:
-		usersOnPage.append(i.attrib['href'].split('/')[3])
-	return usersOnPage
-
-def getItemsByUserID(userID, driverS, counter):
-	nextPageToken = ''
-	itemsID = []
-	while nextPageToken != None:
-		counter = counter + 1
-		if counter > 10:
-			counter = 0
-			driverS.close()
-			print('           -------   new driver run   -------   ')
-			driverS = get_driver()
-		nextPageToken = nextPageToken.encode('ascii', 'ignore')
-		url = 'https://www.amazon.com/profilewidget/timeline/visitor?nextPageToken={}&filteredContributionTypes=productreview&directedId={}'.format(urllib.quote(nextPageToken), userID)
-		driverS.get(url)
-		print('url: ', url)
-		tree = etree.parse(StringIO(driverS.page_source), parser)
-		response_dict = json.loads(tree.xpath("//text()")[0])
-		contributions = response_dict['contributions']
-		nextPageToken = response_dict['nextPageToken']
-		itemsIDOnPage = [i[u'product'][u'asin'].encode('ascii', 'ignore') for i in contributions]
-		itemsID.extend(itemsIDOnPage)
-	return itemsID, driverS, counter
-
-def getUsersIDForItemID(itemID):
-	print('itemID: ', itemID)
-	review_link_general = getAllReviewsLinkByItemID(itemID)
-	if review_link_general is None:
-		return []
-	base_link = 'https://www.amazon.com'
-	print('itemID all reviews page: ', base_link+review_link_general)
-	driver.get(base_link+review_link_general)
-	tree = etree.parse(StringIO(driver.page_source), parser)
-	els = tree.xpath("//li[@data-reftag='cm_cr_arp_d_paging_btm']/a/text()")
-	if len(els)> 1:
-		total_pages = int(els[len(els)-1])
-	else:
-		total_pages = 1
-	review_links = []
-	to_be_replaced = 'ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
-	for i in range(0, total_pages):
-		replace_end = 'ref=cm_cr_arp_d_paging_btm_{}?ie=UTF8&reviewerType=all_reviews&pageNumber={}'.format(i+1,i+1)
-		new_review_link = review_link_general.replace(to_be_replaced, replace_end)
-		review_links.append(new_review_link)
-	usersForItemID = []
-	for review_link in review_links:
-		usersForItemIDOnPage = getAllUsersOnReviewPage(review_link)
-		usersForItemID.extend(usersForItemIDOnPage)
-	return usersForItemID
-
+downloader = Downloader()
 col = UsersCollection()
 col.loadFromDisk()
 #col.add(user1)
@@ -170,8 +177,6 @@ for itemID in user1.itemsID:
 		continue
 	usersID = getUsersIDForItemID(itemID)
 	users = []
-	driverS = get_driver()
-	counter = 0
 	for userID in usersID:
 		if col.existsUserID(userID):
 			print('         ------- users {} exists -------'.format(userID))
@@ -181,7 +186,7 @@ for itemID in user1.itemsID:
 		print('----------------------')
 		print('itemID:', itemID, 'userID', userID)
 		print('----')
-		itemsID, driverS, counter = getItemsByUserID(userID, driverS, counter)
+		itemsID = getItemsByUserID(userID)
 		col.addUser(User(userID, itemsID))
 		col.saveToDisk()
 	col.addItemID(itemID)
