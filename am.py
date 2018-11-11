@@ -22,24 +22,40 @@ class UsersCollection(object):
 	def __init__(self):
 		self.users = []
 		self.usersID = []
-	def add(self, user):
+		self.itemsID = []
+		self.fileuser = 'user.csv'
+		self.fileitems = 'items.csv'
+	def addUser(self, user):
 		if user.id not in self.usersID and user not in self.users:
 			self.users.append(user)
 			self.usersID.append(user.id)
-	def exists(self, usersID):
-		return usersID in self.usersID
-	def saveToDisk(self, file):
-		with open(file, 'w') as f:
+	def addItemID(self, itemID):
+		if itemID not in self.itemsID:
+			self.itemsID.append(itemID)
+	def existsUserID(self, userID):
+		return userID in self.usersID
+	def existsItemID(self, itemID):
+		return itemID in self.itemsID
+	def saveToDisk(self):
+		with open(self.fileuser, 'w') as f:
 			xxx = [x.getString() for x in self.users]
 			f.write('\n'.join(xxx))
-	def loadFromDisk(self, file):
-		if os.path.isfile(file): 
-			with open(file, 'r') as f:
+		with open(self.fileitems, 'w') as f:
+			f.write('\n'.join(self.itemsID))
+	def loadFromDisk(self):
+		if os.path.isfile(self.fileuser): 
+			with open(self.fileuser, 'r') as f:
 				for line in f:
 					userID, itemsID = line.split('\t')
 					itemsID = itemsID.strip()
 					itemsID = itemsID.split(',')
-					self.add(User(userID, itemsID))
+					self.addUser(User(userID, itemsID))
+		if os.path.isfile(self.fileitems): 
+			with open(self.fileitems, 'r') as f:
+				itemsID = []
+				for line in f:
+					itemsID.append(line.strip())
+				self.itemsID = itemsID
 
 ids='B07G8DLK1L,B00CKJG7NS,B07JQGNC39,B07J6Q2BPF,B01MZYT1SY,\
 		B07GRRZ24K,B07GJ42DB2,B07HH5YV6K,B0713RDBL2,B07GQTRRFL,\
@@ -143,16 +159,19 @@ def getUsersIDForItemID(itemID):
 	return usersForItemID
 
 col = UsersCollection()
-col.loadFromDisk('ids.csv')
+col.loadFromDisk()
 #col.add(user1)
 
 for itemID in user1.itemsID:
+	if col.existsItemID(itemID):
+		print('         ------- ITEM {} exists -------'.format(itemID))
+		continue
 	usersID = getUsersIDForItemID(itemID)
 	users = []
 	driverS = get_driver()
 	counter = 0
 	for userID in usersID:
-		if col.exists(userID):
+		if col.existsUserID(userID):
 			print('         ------- users {} exists -------'.format(userID))
 			continue
 		print('----------------------')
@@ -161,8 +180,10 @@ for itemID in user1.itemsID:
 		print('itemID:', itemID, 'userID', userID)
 		print('----')
 		itemsID, driverS, counter = getItemsByUserID(userID, driverS, counter)
-		col.add(User(userID, itemsID))
-		col.saveToDisk('ids.csv')
+		col.addUser(User(userID, itemsID))
+		col.saveToDisk()
+	col.addItemID(itemID)
+	col.saveToDisk()
 
 
 
