@@ -8,6 +8,8 @@ import sys
 from lxml import etree
 from io import StringIO, BytesIO
 import os.path
+import urllib
+import json
 
 class User(object):
 	def __init__(self, userID = '', itemsID = []):
@@ -24,6 +26,8 @@ class UsersCollection(object):
 		if user.id not in self.usersID and user not in self.users:
 			self.users.append(user)
 			self.usersID.append(user.id)
+	def exists(self, usersID):
+		return usersID in self.usersID
 	def saveToDisk(self, file):
 		with open(file, 'w') as f:
 			xxx = [x.getString() for x in self.users]
@@ -33,6 +37,8 @@ class UsersCollection(object):
 			with open(file, 'r') as f:
 				for line in f:
 					userID, itemsID = line.split('\t')
+					itemsID = itemsID.strip()
+					itemsID = itemsID.split(',')
 					self.add(User(userID, itemsID))
 
 ids='B07G8DLK1L,B00CKJG7NS,B07JQGNC39,B07J6Q2BPF,B01MZYT1SY,\
@@ -138,14 +144,17 @@ def getUsersIDForItemID(itemID):
 
 col = UsersCollection()
 col.loadFromDisk('ids.csv')
-col.add(user1)
+#col.add(user1)
 
 for itemID in user1.itemsID:
 	usersID = getUsersIDForItemID(itemID)
 	users = []
 	driverS = get_driver()
 	counter = 0
-	for userID in usersForItemID:
+	for userID in usersID:
+		if col.exists(userID):
+			print('         ------- users {} exists -------'.format(userID))
+			continue
 		print('----------------------')
 		print('----------------------')
 		print('----------------------')
