@@ -33,6 +33,18 @@ class UsersCollection(object):
 		return userID in self.usersID
 	def existsItemID(self, itemID):
 		return itemID in self.itemsID
+	def getAllItemsID(self):
+		itemsID = []
+		for user in self.users:
+			itemsID.extend(user.itemsID)	
+		return list(set(itemsID))
+	def getAllItemsIDLess(self):
+		itemsID = []
+		for user in self.users:
+			if len(user.itemsID)>100:
+				continue
+			itemsID.extend(user.itemsID)	
+		return list(set(itemsID))
 	def saveToDisk(self):
 		with open(self.fileuser, 'w') as f:
 			xxx = [x.getString() for x in self.users]
@@ -60,12 +72,16 @@ class Downloader(object):
 		self.counter = 0	
 	def __del__(self):
 		self.driver.close()
-	def getSourcePage(self, url):
+	def getSourcePage(self, url, place=''):
 		self.counter += 1
-		if self.counter > 10:
+		print('--')
+		print('C: ', self.counter)
+		print(place, url)
+		if self.counter > 11:
 			self.driver.close()
 			self.driver = self.getWebdriver()
 			self.counter = 0
+			print('---- counter reset ----')
 		self.driver.get(url)
 		self.driver.get_screenshot_as_file("last_page.png")
 		return self.driver.page_source
@@ -81,7 +97,7 @@ class Downloader(object):
 def getAllReviewsLinkByItemID(itemID):
 	base_link = 'https://www.amazon.com/gp/product/'
 	temp_link = base_link + itemID
-	page_source = downloader.getSourcePage(temp_link)
+	page_source = downloader.getSourcePage(temp_link, 'getAllReviewsLinkByItemID')
 	tree = etree.parse(StringIO(page_source), parser)
 	els = tree.xpath("//a[@data-hook='see-all-reviews-link-foot']")
 	if len(els) == 0:
@@ -92,7 +108,7 @@ def getAllReviewsLinkByItemID(itemID):
 def getAllUsersOnReviewPage(review_link):
 	base_link = 'https://www.amazon.com'
 	temp_link = base_link + review_link
-	page_source = downloader.getSourcePage(temp_link)
+	page_source = downloader.getSourcePage(temp_link, 'getAllUsersOnReviewPage')
 	tree = etree.parse(StringIO(page_source), parser)
 	els = tree.xpath("//a[@class='a-profile']")
 	usersOnPage = []
@@ -106,8 +122,7 @@ def getItemsByUserID(userID):
 	while nextPageToken != None:
 		nextPageToken = nextPageToken.encode('ascii', 'ignore')
 		url = 'https://www.amazon.com/profilewidget/timeline/visitor?nextPageToken={}&filteredContributionTypes=productreview&directedId={}'.format(urllib.quote(nextPageToken), userID)
-		page_source = downloader.getSourcePage(url)
-		print('url: ', url)
+		page_source = downloader.getSourcePage(url, 'getItemsByUserID')
 		tree = etree.parse(StringIO(page_source), parser)
 		#print('JSON: ', tree.xpath("//text()")[0])
 		response_dict = json.loads(tree.xpath("//text()")[0])
@@ -124,13 +139,15 @@ def getUsersIDForItemID(itemID):
 		return []
 	base_link = 'https://www.amazon.com'
 	print('itemID all reviews page: ', base_link+review_link_general)
-	page_source = downloader.getSourcePage(base_link+review_link_general)
+	page_source = downloader.getSourcePage(base_link+review_link_general, 'getUsersIDForItemID')
 	tree = etree.parse(StringIO(page_source), parser)
 	els = tree.xpath("//li[@data-reftag='cm_cr_arp_d_paging_btm']/a/text()")
 	if len(els)> 1:
 		total_pages = int(els[len(els)-1])
 	else:
 		total_pages = 1
+	if total_pages>10:
+		return []
 	review_links = []
 	to_be_replaced = 'ref=cm_cr_dp_d_show_all_btm?ie=UTF8&reviewerType=all_reviews'
 	for i in range(0, total_pages):
@@ -171,7 +188,8 @@ col = UsersCollection()
 col.loadFromDisk()
 #col.add(user1)
 # 'B07J6Q2BPF' usersID = getUsersIDForItemID('B07J6Q2BPF')
-for itemID in user1.itemsID:
+itemsToCheck = col.getAllItemsID()
+for itemID in itemsToCheck:
 	if col.existsItemID(itemID):
 		print('         ------- ITEM {} exists -------'.format(itemID))
 		continue
